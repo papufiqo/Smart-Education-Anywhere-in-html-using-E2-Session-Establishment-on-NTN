@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smart Education Anywhere — E2 Session Establishment on NTN (Demo)</title>
+  <meta name="description" content="Single-file demo webapp that simulates E2 session establishment over NTN for an education platform. No backend; mocked E2/RIC flows." />
+  <style>
+    :root{
+      --bg:#0b1020; --card:#111833; --muted:#8aa0ff; --accent:#66e2a3; --text:#e8ecff; --sub:#c7cffc; --warn:#ffd166; --danger:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:radial-gradient(1200px 700px at 80% -10%,#1e2a72 0%,#0b1020 50%,#0b1020 100%)}
+    header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #1b2550;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:38px;height:38px;border-radius:12px;background:conic-gradient(from 120deg,#66e2a3,#8aa0ff,#66e2a3);box-shadow:0 0 0 3px rgba(102,226,163,.15)}
+    .brand h1{font-size:18px;margin:0;letter-spacing:.2px}
+    .grid{display:grid;gap:16px;padding:16px;grid-template-columns:repeat(12,1fr)}
+    .card{background:rgba(17,24,51,.75);backdrop-filter:blur(6px);border:1px solid #263278;border-radius:16px;box-shadow:0 10px 30px rgba(7,12,28,.35)}
+    .card h2{margin:0;padding:14px 16px;border-bottom:1px solid #1b2550;font-size:14px;color:var(--muted);letter-spacing:.3px}
+    .card .content{padding:14px 16px}
+    .muted{color:var(--sub);opacity:.95}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    label{font-size:12px;color:var(--sub)}
+    input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #2a367a;background:#0f1533;color:var(--text);outline:none}
+    input:focus,select:focus,textarea:focus{border-color:#5a6dff;box-shadow:0 0 0 3px rgba(90,109,255,.2)}
+    button{padding:10px 14px;border-radius:12px;border:1px solid #2b7a62;background:linear-gradient(180deg,#2e9b7b,#238f72);color:#041312;font-weight:600;cursor:pointer}
+    button.secondary{border-color:#2a367a;background:linear-gradient(180deg,#16204a,#121a3e);color:var(--sub)}
+    button.warn{border-color:#7a5f2a;background:linear-gradient(180deg,#e5b96d,#d69b3a)}
+    button.danger{border-color:#7a2a2a;background:linear-gradient(180deg,#ff8585,#f56161)}
+    .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid #254aa7;background:#0f1736;padding:6px 10px;border-radius:999px;font-size:12px}
+    .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .kpi .item{padding:10px 12px;border-radius:12px;border:1px solid #263278;background:#0f1637}
+    .kpi .val{font-size:18px;font-weight:700}
+    .logs{height:240px;overflow:auto;background:#070c1d;border-radius:12px;border:1px solid #1b2550;padding:10px;font-family:ui-monospace,Consolas,Menlo,monospace;font-size:12px;line-height:1.45}
+    .video{width:100%;height:260px;border-radius:14px;border:1px dashed #31419a;display:grid;place-items:center;color:#9eb0ff}
+    .slider{accent-color:#6ec7ff}
+    .badge{padding:4px 8px;border-radius:999px;border:1px solid #2a367a;background:#0d1640;color:#b9c4ff;font-size:11px}
+    .tag{padding:2px 8px;border-radius:8px;background:#152059;border:1px solid #2a367a;font-size:11px;color:#b9c4ff}
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{border-bottom:1px solid #1b2550;padding:8px 6px;text-align:left;font-size:12px}
+    .foot{padding:10px 16px;color:#94a4ff;border-top:1px solid #1b2550;font-size:12px}
+    .mono{font-family:ui-monospace,Consolas,Menlo,monospace}
+    .col-3{grid-column:span 3}
+    .col-4{grid-column:span 4}
+    .col-5{grid-column:span 5}
+    .col-6{grid-column:span 6}
+    .col-7{grid-column:span 7}
+    .col-8{grid-column:span 8}
+    .col-12{grid-column:span 12}
+    @media(max-width:1100px){.col-7,.col-8{grid-column:span 12}.kpi{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:720px){.col-4,.col-5,.col-6,.col-3{grid-column:span 12}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>Smart Education Anywhere</h1>
+        <div class="muted" style="font-size:12px">E2 Session Establishment over NTN — Frontend demo (mocked RIC/E2)</div>
+      </div>
+    </div>
+    <div class="row">
+      <span class="pill" id="sessionState">Status: <strong class="muted">Idle</strong></span>
+      <span class="pill">Build: <span class="mono">v0.3</span></span>
+    </div>
+  </header>
+
+  <main class="grid" aria-live="polite">
+    <!-- SESSION CONTROL -->
+    <section class="card col-7" aria-labelledby="sec-session">
+      <h2 id="sec-session">E2 Session Control (NTN)</h2>
+      <div class="content">
+        <div class="row">
+          <div style="flex:1;min-width:220px">
+            <label for="operator">Operator (PLMN)</label>
+            <input id="operator" placeholder="001-01 (TestNet)" value="001-01" />
+          </div>
+          <div style="flex:1;min-width:220px">
+            <label for="ric">Near-RT RIC Endpoint</label>
+            <input id="ric" placeholder="wss://ric.example.net/e2" value="wss://ric.mock/e2" />
+          </div>
+          <div style="flex:.8;min-width:200px">
+            <label for="orbit">Orbit</label>
+            <select id="orbit">
+              <option value="LEO" selected>LEO</option>
+              <option value="MEO">MEO</option>
+              <option value="GEO">GEO</option>
+              <option value="HAPS">HAPS</option>
+            </select>
+          </div>
+          <div style="flex:.8;min-width:200px">
+            <label for="beam">Beam ID</label>
+            <input id="beam" placeholder="BEAM-23A" value="BEAM-23A" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div style="flex:1;min-width:170px">
+            <label for="slice">Slice/Service</label>
+            <select id="slice">
+              <option value="EDU-EMBB" selected>EDU-EMBB (Video classes)</option>
+              <option value="EDU-URLLC">EDU-URLLC (Interactive labs)</option>
+              <option value="EDU-MMTC">EDU-MMTC (IoT classrooms)</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:170px">
+            <label for="latency">Target Latency (ms)</label>
+            <input id="latency" type="number" min="5" max="600" step="5" value="80" />
+          </div>
+          <div style="flex:1;min-width:170px">
+            <label for="throughput">Min Throughput (Mbps)</label>
+            <input id="throughput" type="number" min="1" max="200" step="1" value="8" />
+          </div>
+          <div style="flex:1;min-width:170px">
+            <label for="jitter">Max Jitter (ms)</label>
+            <input id="jitter" type="number" min="0" max="200" step="1" value="30" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div style="flex:1;min-width:200px"><label for="token">Auth Token</label>
+            <input id="token" placeholder="eyJhbGciOi..." value="demo-token" />
+          </div>
+          <div style="flex:1;min-width:200px"><label for="cipher">Encryption</label>
+            <select id="cipher">
+              <option>AES-256-GCM</option>
+              <option>ChaCha20-Poly1305</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;align-items:end">
+            <button id="btnEstablish">Establish E2 Session</button>
+            <button id="btnPolicy" class="secondary">Push Policy</button>
+            <button id="btnTerminate" class="danger">Terminate</button>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div style="flex:1">
+            <label for="policy">xApp Policy (JSON)</label>
+            <textarea id="policy" rows="7" spellcheck="false" class="mono">{
+  "policyId": "edu-qos-01",
+  "scope": { "slice": "EDU-EMBB", "plmn": "001-01", "beam": "BEAM-23A" },
+  "targets": { "latencyMs": 80, "minThroughputMbps": 8, "maxJitterMs": 30 },
+  "actions": [
+    { "type": "PRB_ALLOCATION", "value": 25 },
+    { "type": "SCHED_PRIORITY", "value": "HIGH" },
+    { "type": "HARQ_TUNING", "value": "AUTO" }
+  ]
+}</textarea>
+          </div>
+          <div style="flex:1">
+            <label for="logs">E2 / NTN Logs</label>
+            <div id="logs" class="logs" aria-live="polite" aria-atomic="false"></div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">This simulates E2AP setup, policy push, and NTN link dynamics for education traffic. Replace the mock API with your RIC/E2 gateway later.</div>
+    </section>
+
+    <!-- LEARNING EXPERIENCE -->
+    <section class="card col-5" aria-labelledby="sec-learn">
+      <h2 id="sec-learn">Learning Experience</h2>
+      <div class="content">
+        <div class="row" style="align-items:center;justify-content:space-between">
+          <div class="row" style="align-items:center;gap:8px">
+            <span class="badge" id="linkState">Link: Disconnected</span>
+            <span class="badge" id="sliceState">Slice: —</span>
+            <span class="tag" id="bitrateTag">Bitrate: 0 Mbps</span>
+          </div>
+          <div class="row">
+            <button class="secondary" id="btnPreload">Preload Lesson</button>
+            <button class="warn" id="btnStartClass">Start Class</button>
+          </div>
+        </div>
+        <div class="video" id="player" role="group" aria-label="Lesson Player">
+          <div id="playerLabel">Waiting for session…</div>
+        </div>
+        <div class="kpi" style="margin-top:10px">
+          <div class="item"><div class="muted">Latency</div><div class="val" id="kLatency">—</div></div>
+          <div class="item"><div class="muted">Jitter</div><div class="val" id="kJitter">—</div></div>
+          <div class="item"><div class="muted">Loss</div><div class="val" id="kLoss">—</div></div>
+          <div class="item"><div class="muted">Throughput</div><div class="val" id="kTp">—</div></div>
+        </div>
+        <div style="margin-top:10px">
+          <table class="table" aria-label="Course Outline">
+            <thead><tr><th>Lesson</th><th>Format</th><th>Size</th><th>QoS</th></tr></thead>
+            <tbody>
+              <tr><td>Intro to Oceans</td><td>Video</td><td>120 MB</td><td>EMBB</td></tr>
+              <tr><td>Live Q&A</td><td>Real-time</td><td>—</td><td>URLLC</td></tr>
+              <tr><td>Field Sensors Lab</td><td>Data Sync</td><td>16 MB</td><td>MMTC</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- LINK SIMULATOR -->
+    <section class="card col-8" aria-labelledby="sec-sim">
+      <h2 id="sec-sim">NTN Link Simulator</h2>
+      <div class="content">
+        <div class="row">
+          <div style="flex:1">
+            <label>Latency (ms)</label>
+            <input id="simLatency" type="range" class="slider" min="20" max="600" value="120" />
+          </div>
+          <div style="flex:1">
+            <label>Jitter (ms)</label>
+            <input id="simJitter" type="range" class="slider" min="0" max="150" value="40" />
+          </div>
+          <div style="flex:1">
+            <label>Loss (%)</label>
+            <input id="simLoss" type="range" class="slider" min="0" max="20" step="0.5" value="1.0" />
+          </div>
+          <div style="flex:1">
+            <label>Throughput (Mbps)</label>
+            <input id="simTp" type="range" class="slider" min="1" max="100" value="12" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;align-items:center">
+          <label class="pill"><input type="checkbox" id="simBlockage" /> Temporary blockage</label>
+          <label class="pill"><input type="checkbox" id="simHandOver" /> Beam handover</label>
+          <label class="pill"><input type="checkbox" id="simEdgeCache" checked /> Edge caching</label>
+        </div>
+      </div>
+    </section>
+
+    <!-- TELEMETRY -->
+    <section class="card col-4" aria-labelledby="sec-telemetry">
+      <h2 id="sec-telemetry">Telemetry</h2>
+      <div class="content">
+        <div id="telemetry" class="logs" style="height:320px"></div>
+      </div>
+    </section>
+
+    <!-- DOCS / API NOTES -->
+    <section class="card col-12" aria-labelledby="sec-docs">
+      <h2 id="sec-docs">Developer Notes: Mocked E2 / xApp API</h2>
+      <div class="content">
+        <pre class="logs" style="height:auto">// Establish session
+E2API.establishSession({ plmn, ricUrl, orbit, beam, slice, qos: {latency,jitter,throughput}, token, cipher })
+  -> { sessionId, state: "CONNECTED", admitted: true, capabilities: ["E2SM-KPM","E2SM-RC"] }
+
+// Push xApp policy
+E2API.pushPolicy(sessionId, policyJson)
+  -> { ok: true, appliedAt: ts }
+
+// Terminate session
+E2API.terminateSession(sessionId)
+  -> { state: "TERMINATED" }
+        </pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  // ---------- Utilities ----------
+  const $ = (id) => document.getElementById(id);
+  const logs = $("logs");
+  const tel = $("telemetry");
+  function log(line, target = logs){
+    const ts = new Date().toISOString().replace('T',' ').replace('Z','');
+    target.textContent += `[${ts}] ${line}\n`;
+    target.scrollTop = target.scrollHeight;
+  }
+  function fmtMbps(v){return `${Number(v).toFixed(1)} Mbps`;}
+
+  // ---------- Mock E2/xApp API ----------
+  const E2API = {
+    async establishSession(cfg){
+      log(`E2AP Association -> RIC: ${cfg.ricUrl}`);
+      await wait(400);
+      log(`E2 Setup (PLMN ${cfg.plmn}, Orbit ${cfg.orbit}, Beam ${cfg.beam})`);
+      await wait(500);
+      log(`Admit Slice ${cfg.slice} with QoS L=${cfg.qos.latency}ms J=${cfg.qos.jitter}ms TP>=${cfg.qos.throughput}Mbps`);
+      await wait(400);
+      log(`Security: ${cfg.cipher}, token=${cfg.token.substring(0,8)}…`);
+      await wait(250);
+      return { sessionId: `sess-${Math.random().toString(36).slice(2,8)}`, state: 'CONNECTED',
+               admitted: true, capabilities: ['E2SM-KPM','E2SM-RC'] };
+    },
+    async pushPolicy(sessionId, json){
+      log(`xApp Policy push -> ${sessionId}`);
+      await wait(250);
+      log(`Policy applied: ${json.policyId || 'unknown'}`);
+      return { ok:true, appliedAt: Date.now() };
+    },
+    async terminateSession(sessionId){
+      log(`Terminate -> ${sessionId}`);
+      await wait(200);
+      return { state:'TERMINATED' };
+    }
+  };
+  const wait = (ms)=> new Promise(r=>setTimeout(r,ms));
+
+  // ---------- UI State ----------
+  let session = null;
+  let sim = { latency:120, jitter:40, loss:1.0, tp:12, blockage:false, handover:false, edgeCache:true };
+  let classTimer = null;
+
+  function updateKPI(){
+    $("kLatency").textContent = sim.latency + ' ms';
+    $("kJitter").textContent = sim.jitter + ' ms';
+    $("kLoss").textContent = sim.loss + ' %';
+    $("kTp").textContent = fmtMbps(sim.tp);
+    $("bitrateTag").textContent = 'Bitrate: ' + fmtMbps(estimateBitrate());
+  }
+  function estimateBitrate(){
+    if(!session) return 0;
+    if(sim.blockage) return 0.2; // kbps scenario
+    // Simple heuristic mapping throughput, loss, jitter to player bitrate
+    const eff = Math.max(0, (sim.tp * (1 - sim.loss/50)) * (1 - sim.jitter/400));
+    return Math.max(0.2, Math.min(eff, sim.tp));
+  }
+
+  // ---------- Handlers ----------
+  $("btnEstablish").addEventListener('click', async ()=>{
+    const cfg = {
+      plmn: $("operator").value,
+      ricUrl: $("ric").value,
+      orbit: $("orbit").value,
+      beam: $("beam").value,
+      slice: $("slice").value,
+      qos: { latency:Number($("latency").value), jitter:Number($("jitter").value), throughput:Number($("throughput").value) },
+      token: $("token").value,
+      cipher: $("cipher").value
+    };
+    setSessionState('CONNECTING');
+    session = await E2API.establishSession(cfg);
+    setSessionState(session.state);
+    $("sliceState").textContent = 'Slice: ' + cfg.slice;
+    $("linkState").textContent = 'Link: Connected ('+cfg.orbit+')';
+    log(`Capabilities: ${session.capabilities.join(', ')}`);
+    tel.textContent='';
+    logTel('NTN beam locked');
+    updateKPI();
+  });
+
+  $("btnPolicy").addEventListener('click', async ()=>{
+    if(!session){alert('No session. Establish first.');return;}
+    let json;
+    try{ json = JSON.parse($("policy").value);}catch(e){ alert('Invalid JSON policy'); return; }
+    await E2API.pushPolicy(session.sessionId, json);
+    logTel('Policy updated: PRB/Sched/HARQ tuned');
+  });
+
+  $("btnTerminate").addEventListener('click', async ()=>{
+    if(!session){return;}
+    await E2API.terminateSession(session.sessionId);
+    session = null;
+    setSessionState('IDLE');
+    $("linkState").textContent = 'Link: Disconnected';
+    $("sliceState").textContent = 'Slice: —';
+    $("playerLabel").textContent = 'Waiting for session…';
+    clearInterval(classTimer);
+  });
+
+  $("btnPreload").addEventListener('click', ()=>{
+    if(!session){alert('Establish E2 session first');return;}
+    const cached = sim.edgeCache ? 'Edge cache hit' : 'Origin fetch via NTN';
+    log(`Preloading lesson segments (HLS/DASH)… ${cached}`);
+    setTimeout(()=>log('Segments ready for playback'), 700);
+  });
+
+  $("btnStartClass").addEventListener('click', ()=>{
+    if(!session){alert('Establish E2 session first');return;}
+    $("playerLabel").textContent = 'Streaming…';
+    log('Start Class -> adaptive player using estimated bitrate');
+    clearInterval(classTimer);
+    classTimer = setInterval(()=>{
+      updateKPI();
+      const br = estimateBitrate();
+      if(sim.blockage){
+        $("player").style.borderColor = '#ff6b6b';
+        $("playerLabel").textContent = 'Re-buffering (blockage)…';
+        logTel('Blockage detected: switching to low-latency profile + FEC');
+      } else if(br < 2){
+        $("player").style.borderColor = '#ffd166';
+        $("playerLabel").textContent = 'Low-res fallback ('+br.toFixed(1)+' Mbps)';
+      } else {
+        $("player").style.borderColor = '#31419a';
+        $("playerLabel").textContent = 'HD streaming ('+br.toFixed(1)+' Mbps)';
+      }
+    }, 1000);
+  });
+
+  // Simulator controls
+  $("simLatency").addEventListener('input', e=>{sim.latency=Number(e.target.value);updateKPI();logTel('Latency-> '+sim.latency+'ms');});
+  $("simJitter").addEventListener('input', e=>{sim.jitter=Number(e.target.value);updateKPI();logTel('Jitter-> '+sim.jitter+'ms');});
+  $("simLoss").addEventListener('input', e=>{sim.loss=Number(e.target.value);updateKPI();logTel('Loss-> '+sim.loss+'%');});
+  $("simTp").addEventListener('input', e=>{sim.tp=Number(e.target.value);updateKPI();logTel('Throughput-> '+sim.tp+'Mbps');});
+  $("simBlockage").addEventListener('change', e=>{sim.blockage=e.target.checked;logTel('Blockage: '+(sim.blockage?'ON':'OFF'));});
+  $("simHandOver").addEventListener('change', e=>{sim.handover=e.target.checked; if(sim.handover){
+      log('Beam handover initiated…');
+      setTimeout(()=>{ $("beam").value = $("beam").value+'→B24B'; log('Handover complete: Beam B24B'); logTel('New beam lock');}, 800);
+    } else { logTel('Handover flag cleared'); }
+  });
+  $("simEdgeCache").addEventListener('change', e=>{sim.edgeCache=e.target.checked; logTel('Edge cache: '+(sim.edgeCache?'enabled':'disabled'));});
+
+  function setSessionState(state){
+    $("sessionState").innerHTML = 'Status: <strong>'+state+'</strong>';
+  }
+  function logTel(line){ log(line, tel); }
+
+  // Initialize
+  updateKPI();
+  log('Ready. Configure and establish session.');
+  </script>
+</body>
+</html>
